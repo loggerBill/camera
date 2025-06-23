@@ -87,6 +87,7 @@ public class CameraGLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        Log.e("camerafilter","onSurfaceCreated");
         // 生成纹理
         int[] textures = new int[1];
         GLES20.glGenTextures(1, textures, 0);
@@ -98,8 +99,15 @@ public class CameraGLRenderer implements GLSurfaceView.Renderer {
             // 通过 glSurfaceView 调用 requestRender()
             glSurfaceView.requestRender();
         });
-        mSurface = new Surface(surfaceTexture);
 
+        if (preViewSize != null) {
+            surfaceTexture.setDefaultBufferSize(
+                    preViewSize.getWidth(),
+                    preViewSize.getHeight()
+            );
+        }
+
+        mSurface = new Surface(surfaceTexture);
         // 初始化着色器
         initShader();
     }

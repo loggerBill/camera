@@ -48,7 +48,7 @@ public class CameraActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         }
         renderer = glSurfaceView.getRenderer();
-        renderer.setFilterType(6);
+        renderer.setFilterType(4);
     }
 
     @SuppressLint("MissingSuperCall")
