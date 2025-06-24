@@ -95,9 +95,11 @@ public class CameraGLRenderer implements GLSurfaceView.Renderer {
 
         // 创建 SurfaceTexture 和 Surface
         surfaceTexture = new SurfaceTexture(textureId);
-        surfaceTexture.setOnFrameAvailableListener(st -> {
-            // 通过 glSurfaceView 调用 requestRender()
-            glSurfaceView.requestRender();
+        surfaceTexture.setOnFrameAvailableListener(new SurfaceTexture.OnFrameAvailableListener() {
+            @Override
+            public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+                glSurfaceView.requestRender();
+            }
         });
 
         if (preViewSize != null) {
@@ -115,89 +117,91 @@ public class CameraGLRenderer implements GLSurfaceView.Renderer {
     private void initShader() {
         Log.d("camerafilter","initShader");
         // 顶点着色器代码（使用 OpenGL ES 2.0 语法）
-        String vertexShaderSource =
-                "attribute vec4 aPosition;\n" +
-                        "attribute vec2 aTexCoord;\n" +
-                        "varying vec2 vTexCoord;\n" +
-                        "uniform mat4 uTexMatrix;\n" +
-                        "uniform mat4 uMvpMatrix;\n" + // 新增MVP矩阵
-                        "void main() {\n" +
-                        "    gl_Position = uMvpMatrix * aPosition;\n" + // 应用MVP矩阵
-                        "    vTexCoord = (uTexMatrix * vec4(aTexCoord, 0.0, 1.0)).xy;\n" +
-                        "}";
+//        String vertexShaderSource =
+//                "attribute vec4 aPosition;\n" +
+//                        "attribute vec2 aTexCoord;\n" +
+//                        "varying vec2 vTexCoord;\n" +
+//                        "uniform mat4 uTexMatrix;\n" +
+//                        "uniform mat4 uMvpMatrix;\n" + // 新增MVP矩阵
+//                        "void main() {\n" +
+//                        "    gl_Position = uMvpMatrix * aPosition;\n" + // 应用MVP矩阵
+//                        "    vTexCoord = (uTexMatrix * vec4(aTexCoord, 0.0, 1.0)).xy;\n" +
+//                        "}";
 
+        String vertexShaderSource = ShaderUtils.readShaderFromRawResource(mContext, R.raw.vertex_shader);
+        String fragmentShaderSource = ShaderUtils.readShaderFromRawResource(mContext, R.raw.fragment_shader);
         // 片段着色器代码（处理外部纹理）
-        String fragmentShaderSource =
-                "#extension GL_OES_EGL_image_external : require\n" +
-                        "precision mediump float;\n" +
-                        "varying vec2 vTexCoord;\n" +
-                        "uniform samplerExternalOES uTexture;\n" +
-                        "uniform int uFilterType; // 新增：滤镜类型参数\n" +
-                        "\n" +
-                        "void main() {\n" +
-                        "    vec4 color = texture2D(uTexture, vTexCoord);\n" +
-                        "    \n" +
-                        "    // 根据滤镜类型处理颜色\n" +
-                        "    if (uFilterType == 0) { // 无滤镜\n" +
-                        "        gl_FragColor = color;\n" +
-                        "    } \n" +
-                        "    else if (uFilterType == 1) { // 灰度滤镜\n" +
-                        "        float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));\n" +
-                        "        gl_FragColor = vec4(gray, gray, gray, color.a);\n" +
-                        "    } \n" +
-                        "    else if (uFilterType == 2) { // 反色滤镜\n" +
-                        "        gl_FragColor = vec4(1.0 - color.r, 1.0 - color.g, 1.0 - color.b, color.a);\n" +
-                        "    } \n" +
-                        "    else if (uFilterType == 3) { // 复古棕褐色滤镜\n" +
-                        "        float r = dot(color.rgb, vec3(0.393, 0.769, 0.189));\n" +
-                        "        float g = dot(color.rgb, vec3(0.349, 0.686, 0.168));\n" +
-                        "        float b = dot(color.rgb, vec3(0.272, 0.534, 0.131));\n" +
-                        "        gl_FragColor = vec4(min(r, 1.0), min(g, 1.0), min(b, 1.0), color.a);\n" +
-                        "    }\n" +
-                        "    else if (uFilterType == 4) { // 冷色调滤镜\n" +
-                        "        gl_FragColor = vec4(color.r * 0.8, color.g * 0.9, color.b * 1.2, color.a);\n" +
-                        "    }\n" +
-                        "    else if (uFilterType == 5) { // 暖色调滤镜\n" +
-                        "        gl_FragColor = vec4(color.r * 1.2, color.g * 1.0, color.b * 0.8, color.a);\n" +
-                        "    }\n" +
-                        "    else if (uFilterType == 6) { // 卡通效果\n" +
-                        "        float levels = 4.0;\n" +
-                        "        vec3 posterized = floor(color.rgb * levels) / levels;\n" +
-                        "        gl_FragColor = vec4(posterized, color.a);\n" +
-                        "    }\n" +
-                        "    else if (uFilterType == 7) { // 边缘检测\n" +
-                        "        vec2 texelSize = vec2(1.0) / vec2(1920.0, 1080.0);" +
-                        "        float sx = 0.0;\n" +
-                        "        float sy = 0.0;\n" +
-                        "        for (int i = -1; i <= 1; i++) {\n" +
-                        "            for (int j = -1; j <= 1; j++) {\n" +
-                        "                vec2 offset = vec2(i, j) * texelSize;\n" +
-                        "                vec4 sample = texture2D(uTexture, vTexCoord + offset);\n" +
-                        "                float gray = dot(sample.rgb, vec3(0.299, 0.587, 0.114));\n" +
-                        "                sx += gray * float(i);\n" +
-                        "                sy += gray * float(j);\n" +
-                        "            }\n" +
-                        "        }\n" +
-                        "        float edge = sqrt(sx*sx + sy*sy);\n" +
-                        "        gl_FragColor = vec4(edge, edge, edge, 1.0);\n" +
-                        "    }\n" +
-                        "    else if (uFilterType == 8) { // 模糊效果\n" +
-                        "        vec4 sum = vec4(0.0);\n" +
-                        "        float blur = 0.01; // 模糊强度\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(-4.0*blur, 0.0)) * 0.05;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(-3.0*blur, 0.0)) * 0.09;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(-2.0*blur, 0.0)) * 0.12;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(-1.0*blur, 0.0)) * 0.15;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord) * 0.16;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(1.0*blur, 0.0)) * 0.15;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(2.0*blur, 0.0)) * 0.12;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(3.0*blur, 0.0)) * 0.09;\n" +
-                        "        sum += texture2D(uTexture, vTexCoord + vec2(4.0*blur, 0.0)) * 0.05;\n" +
-                        "    }\n" +
-                        "    else { // 默认无滤镜\n" +
-                        "        gl_FragColor = color;\n" +
-                        "    }\n" +
-                        "}";
+//        String fragmentShaderSource =
+//                "#extension GL_OES_EGL_image_external : require\n" +
+//                        "precision mediump float;\n" +
+//                        "varying vec2 vTexCoord;\n" +
+//                        "uniform samplerExternalOES uTexture;\n" +
+//                        "uniform int uFilterType; // 新增：滤镜类型参数\n" +
+//                        "\n" +
+//                        "void main() {\n" +
+//                        "    vec4 color = texture2D(uTexture, vTexCoord);\n" +
+//                        "    \n" +
+//                        "    // 根据滤镜类型处理颜色\n" +
+//                        "    if (uFilterType == 0) { // 无滤镜\n" +
+//                        "        gl_FragColor = color;\n" +
+//                        "    } \n" +
+//                        "    else if (uFilterType == 1) { // 灰度滤镜\n" +
+//                        "        float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));\n" +
+//                        "        gl_FragColor = vec4(gray, gray, gray, color.a);\n" +
+//                        "    } \n" +
+//                        "    else if (uFilterType == 2) { // 反色滤镜\n" +
+//                        "        gl_FragColor = vec4(1.0 - color.r, 1.0 - color.g, 1.0 - color.b, color.a);\n" +
+//                        "    } \n" +
+//                        "    else if (uFilterType == 3) { // 复古棕褐色滤镜\n" +
+//                        "        float r = dot(color.rgb, vec3(0.393, 0.769, 0.189));\n" +
+//                        "        float g = dot(color.rgb, vec3(0.349, 0.686, 0.168));\n" +
+//                        "        float b = dot(color.rgb, vec3(0.272, 0.534, 0.131));\n" +
+//                        "        gl_FragColor = vec4(min(r, 1.0), min(g, 1.0), min(b, 1.0), color.a);\n" +
+//                        "    }\n" +
+//                        "    else if (uFilterType == 4) { // 冷色调滤镜\n" +
+//                        "        gl_FragColor = vec4(color.r * 0.8, color.g * 0.9, color.b * 1.2, color.a);\n" +
+//                        "    }\n" +
+//                        "    else if (uFilterType == 5) { // 暖色调滤镜\n" +
+//                        "        gl_FragColor = vec4(color.r * 1.2, color.g * 1.0, color.b * 0.8, color.a);\n" +
+//                        "    }\n" +
+//                        "    else if (uFilterType == 6) { // 卡通效果\n" +
+//                        "        float levels = 4.0;\n" +
+//                        "        vec3 posterized = floor(color.rgb * levels) / levels;\n" +
+//                        "        gl_FragColor = vec4(posterized, color.a);\n" +
+//                        "    }\n" +
+//                        "    else if (uFilterType == 7) { // 边缘检测\n" +
+//                        "        vec2 texelSize = vec2(1.0) / vec2(1920.0, 1080.0);" +
+//                        "        float sx = 0.0;\n" +
+//                        "        float sy = 0.0;\n" +
+//                        "        for (int i = -1; i <= 1; i++) {\n" +
+//                        "            for (int j = -1; j <= 1; j++) {\n" +
+//                        "                vec2 offset = vec2(i, j) * texelSize;\n" +
+//                        "                vec4 sample = texture2D(uTexture, vTexCoord + offset);\n" +
+//                        "                float gray = dot(sample.rgb, vec3(0.299, 0.587, 0.114));\n" +
+//                        "                sx += gray * float(i);\n" +
+//                        "                sy += gray * float(j);\n" +
+//                        "            }\n" +
+//                        "        }\n" +
+//                        "        float edge = sqrt(sx*sx + sy*sy);\n" +
+//                        "        gl_FragColor = vec4(edge, edge, edge, 1.0);\n" +
+//                        "    }\n" +
+//                        "    else if (uFilterType == 8) { // 模糊效果\n" +
+//                        "        vec4 sum = vec4(0.0);\n" +
+//                        "        float blur = 0.01; // 模糊强度\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(-4.0*blur, 0.0)) * 0.05;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(-3.0*blur, 0.0)) * 0.09;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(-2.0*blur, 0.0)) * 0.12;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(-1.0*blur, 0.0)) * 0.15;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord) * 0.16;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(1.0*blur, 0.0)) * 0.15;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(2.0*blur, 0.0)) * 0.12;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(3.0*blur, 0.0)) * 0.09;\n" +
+//                        "        sum += texture2D(uTexture, vTexCoord + vec2(4.0*blur, 0.0)) * 0.05;\n" +
+//                        "    }\n" +
+//                        "    else { // 默认无滤镜\n" +
+//                        "        gl_FragColor = color;\n" +
+//                        "    }\n" +
+//                        "}";
 
         // 编译着色器
         int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderSource);
@@ -227,6 +231,7 @@ public class CameraGLRenderer implements GLSurfaceView.Renderer {
         texMatrixHandle = GLES20.glGetUniformLocation(programHandle, "uTexMatrix");
         textureHandle = GLES20.glGetUniformLocation(programHandle, "uTexture");
         mvpMatrixHandle = GLES20.glGetUniformLocation(programHandle, "uMvpMatrix");
+
 
         // 初始化MVP矩阵为单位矩阵
         Matrix.setIdentityM(mvpMatrix, 0);

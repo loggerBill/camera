@@ -15,7 +15,7 @@ public class CameraGLSurfaceView extends GLSurfaceView {
         setEGLContextClientVersion(2); // 使用 OpenGL ES 2.0
         renderer = new CameraGLRenderer(context,this);
         setRenderer(renderer);
-        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY); // 有帧时渲染
+        setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY); // 有帧时渲染,
     }
 
     public Surface getSurface() {

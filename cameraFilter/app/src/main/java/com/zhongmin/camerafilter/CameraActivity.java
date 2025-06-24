@@ -35,6 +35,7 @@ public class CameraActivity extends AppCompatActivity {
     private CameraDevice cameraDevice;
     private CameraCaptureSession captureSession;
     private CameraGLRenderer renderer;
+    private  Surface previewSurface;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
 
 
@@ -48,7 +49,7 @@ public class CameraActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         }
         renderer = glSurfaceView.getRenderer();
-        renderer.setFilterType(4);
+        renderer.setFilterType(7);
     }
 
     @SuppressLint("MissingSuperCall")
@@ -106,7 +107,20 @@ public class CameraActivity extends AppCompatActivity {
                 @Override
                 public void onOpened(@NonNull CameraDevice camera) {
                     cameraDevice = camera;
-                    createCameraPreviewSession();
+                    previewSurface = glSurfaceView.getSurface();
+
+                    if (previewSurface != null){
+                        createCameraPreviewSession();
+                    }else {
+                        try {
+                            Log.d("camerafilter","createCameraPreviewSession after 500ms");
+                            Thread.sleep(500);
+                            previewSurface = glSurfaceView.getSurface();
+                            createCameraPreviewSession();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
                 }
 
                 @Override
@@ -126,7 +140,6 @@ public class CameraActivity extends AppCompatActivity {
 
     private void createCameraPreviewSession() {
         try {
-            Surface previewSurface = glSurfaceView.getSurface();
 
             // 创建预览请求
             final CaptureRequest.Builder previewRequestBuilder =
