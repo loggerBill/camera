@@ -1,4 +1,4 @@
-![1750732658797](https://github.com/user-attachments/assets/5fba9bfa-f406-4cad-b8bc-d785e46d69ea)![1750732658797](https://github.com/user-attachments/assets/47f9d1dd-9aa7-4345-b7c5-dce2fcb8d462)"# Camera APi 2 和 GPENGL ES 实现预览效果
+# Camera APi 2 和 GPENGL ES 实现预览效果
 内置八种滤镜效果
 1.灰度滤镜
 2.反色滤镜
